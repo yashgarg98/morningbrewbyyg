@@ -246,6 +246,142 @@
       transition: background 0.2s;
     }
     .refresh-btn:hover { background: #2d2d55; }
+
+    /* ── Stock tab ── */
+    .stock-input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .stock-input-row input {
+      flex: 1;
+      min-width: 220px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      border: 2px solid #d4cbbf;
+      border-radius: 30px;
+      font-family: sans-serif;
+      outline: none;
+      background: #fff;
+      color: #1a1a2e;
+      transition: border-color 0.2s;
+    }
+    .stock-input-row input:focus { border-color: #f4a324; }
+    .stock-input-row input::placeholder { color: #bbb; }
+    .stock-input-row button {
+      background: #f4a324;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: sans-serif;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .stock-input-row button:hover { background: #d4891a; }
+    .stock-input-row button:disabled { background: #ccc; cursor: default; }
+
+    .ticker-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .ticker-chip {
+      background: #1a1a2e;
+      color: #f4a324;
+      font-family: monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 4px 12px 4px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ticker-chip .remove {
+      cursor: pointer;
+      color: #aab0c0;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .ticker-chip .remove:hover { color: #fff; }
+
+    .ticker-block { margin-bottom: 36px; }
+    .ticker-block-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f4a324;
+    }
+    .ticker-label {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #1a1a2e;
+      font-family: monospace;
+      background: #fff8ec;
+      border: 2px solid #f4a324;
+      border-radius: 8px;
+      padding: 2px 12px;
+    }
+    .ticker-company { font-size: 0.85rem; color: #777; font-family: sans-serif; }
+    .ticker-status  { margin-left: auto; font-size: 0.78rem; color: #999; font-family: sans-serif; }
+
+    .stock-news-list { display: flex; flex-direction: column; gap: 12px; }
+    .stock-news-item {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e8e0d4;
+      padding: 14px 18px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .stock-news-item:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .stock-news-num {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #f4a324;
+      font-family: sans-serif;
+      padding-top: 2px;
+      min-width: 20px;
+    }
+    .stock-news-content { flex: 1; }
+    .stock-news-title { font-size: 0.95rem; font-weight: 700; color: #1a1a2e; line-height: 1.4; margin-bottom: 6px; }
+    .stock-news-meta { font-size: 0.75rem; color: #999; font-family: sans-serif; display: flex; gap: 10px; }
+    .stock-news-link {
+      font-size: 0.75rem;
+      font-family: sans-serif;
+      font-weight: 600;
+      color: #1a1a2e;
+      text-decoration: none;
+      border: 1px solid #1a1a2e;
+      padding: 4px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+      align-self: center;
+      transition: all 0.2s;
+    }
+    .stock-news-link:hover { background: #1a1a2e; color: #fff; }
+
+    .stock-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #bbb;
+      font-family: sans-serif;
+      font-size: 0.95rem;
+    }
+    .stock-empty .big { font-size: 3rem; margin-bottom: 12px; }
+    .stock-error { color: #c0392b; font-family: sans-serif; font-size: 0.85rem; padding: 10px 0; }
   </style>
 </head>
 <body>
@@ -264,6 +400,7 @@
 <nav>
   <button class="active" onclick="switchTab('world', this)">🌍 World News</button>
   <button onclick="switchTab('india', this)">🇮🇳 India News</button>
+  <button onclick="switchTab('stocks', this)">📈 Stock News</button>
 </nav>
 
 <main>
@@ -292,6 +429,30 @@
     <div id="india-container" class="loading">
       <div class="spinner"></div>
       Fetching India news…
+    </div>
+  </div>
+
+  <!-- Stock News -->
+  <div id="stocks" class="section">
+    <div class="section-header">
+      <span class="flag">📈</span>
+      <h2>Stock News</h2>
+    </div>
+
+    <div class="stock-input-row">
+      <input id="ticker-input" type="text"
+        placeholder="Enter ticker(s): AAPL, TSLA, TSMC…  then press Enter or click Fetch"
+        onkeydown="if(event.key==='Enter') addTickers()" />
+      <button onclick="addTickers()" id="fetch-btn">Fetch News</button>
+    </div>
+
+    <div class="ticker-chips" id="ticker-chips"></div>
+    <div id="stock-results">
+      <div class="stock-empty">
+        <div class="big">📊</div>
+        Type one or more ticker symbols above and click <strong>Fetch News</strong>.<br>
+        Example: <code>AAPL, TSLA, TSMC, NVDA</code>
+      </div>
     </div>
   </div>
 </main>
@@ -425,6 +586,109 @@
 
   loadWorld();
   loadIndia();
+
+  // ── Stock News ────────────────────────────────────────────
+  let activeTickers = [];
+
+  function addTickers() {
+    const input = document.getElementById('ticker-input');
+    const raw = input.value.trim();
+    if (!raw) return;
+    const parsed = raw.split(/[\s,;]+/).map(t => t.toUpperCase()).filter(Boolean);
+    parsed.forEach(t => { if (!activeTickers.includes(t)) activeTickers.push(t); });
+    input.value = '';
+    renderChips();
+    fetchAllStockNews();
+  }
+
+  function removeTicker(t) {
+    activeTickers = activeTickers.filter(x => x !== t);
+    renderChips();
+    if (activeTickers.length === 0) {
+      document.getElementById('stock-results').innerHTML = `
+        <div class="stock-empty"><div class="big">📊</div>
+        Type one or more ticker symbols above and click <strong>Fetch News</strong>.<br>
+        Example: <code>AAPL, TSLA, TSMC, NVDA</code></div>`;
+    } else {
+      fetchAllStockNews();
+    }
+  }
+
+  function renderChips() {
+    const el = document.getElementById('ticker-chips');
+    el.innerHTML = activeTickers.map(t => `
+      <div class="ticker-chip">
+        ${t}
+        <span class="remove" onclick="removeTicker('${t}')" title="Remove">✕</span>
+      </div>`).join('');
+  }
+
+  async function fetchStockNews(ticker) {
+    // Yahoo Finance RSS — top news for this ticker
+    const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${ticker}&region=US&lang=en-US`;
+    try {
+      const res = await fetch(PROXY + encodeURIComponent(url), { cache: 'no-store' });
+      const json = await res.json();
+      if (!json.contents) return { ticker, items: [], error: 'No data returned.' };
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(json.contents, 'text/xml');
+      const items = Array.from(xml.querySelectorAll('item')).slice(0, 3).map(item => ({
+        title:   xmlText(item, 'title'),
+        link:    xmlText(item, 'link') || xmlText(item, 'guid'),
+        pubDate: xmlText(item, 'pubDate'),
+        source:  xmlText(item, 'source') || 'Yahoo Finance',
+      })).filter(it => it.title && it.link);
+      return { ticker, items, error: items.length ? null : 'No news found for this ticker.' };
+    } catch(e) {
+      return { ticker, items: [], error: 'Failed to fetch news.' };
+    }
+  }
+
+  async function fetchAllStockNews() {
+    if (!activeTickers.length) return;
+    const resultsEl = document.getElementById('stock-results');
+    resultsEl.innerHTML = '<div class="loading"><div class="spinner"></div>Fetching stock news…</div>';
+    document.getElementById('fetch-btn').disabled = true;
+
+    const allResults = await Promise.all(activeTickers.map(fetchStockNews));
+    document.getElementById('fetch-btn').disabled = false;
+
+    resultsEl.innerHTML = '';
+    allResults.forEach(({ ticker, items, error }) => {
+      const block = document.createElement('div');
+      block.className = 'ticker-block';
+
+      const header = `
+        <div class="ticker-block-header">
+          <span class="ticker-label">$${ticker}</span>
+          <span class="ticker-status">${items.length ? `${items.length} articles` : ''}</span>
+        </div>`;
+
+      let body = '';
+      if (error && !items.length) {
+        body = `<div class="stock-error">⚠ ${error}</div>`;
+      } else {
+        body = `<div class="stock-news-list">` +
+          items.map((item, i) => `
+            <div class="stock-news-item" onclick="window.open('${item.link}','_blank')">
+              <div class="stock-news-num">#${i+1}</div>
+              <div class="stock-news-content">
+                <div class="stock-news-title">${item.title}</div>
+                <div class="stock-news-meta">
+                  <span>${item.source}</span>
+                  <span>${timeAgo(item.pubDate)}</span>
+                </div>
+              </div>
+              <a class="stock-news-link" href="${item.link}" target="_blank"
+                onclick="event.stopPropagation()">Read →</a>
+            </div>`).join('') +
+          `</div>`;
+      }
+
+      block.innerHTML = header + body;
+      resultsEl.appendChild(block);
+    });
+  }
 </script>
 </body>
 </html>
