@@ -586,9 +586,11 @@
 
   loadWorld();
   loadIndia();
+  renderChips();
+  fetchAllStockNews();
 
   // ── Stock News ────────────────────────────────────────────
-  let activeTickers = [];
+  let activeTickers = ['SMR', 'XE', 'LUNR', 'STM', 'ASTS', 'USAR', 'TMC'];
 
   function addTickers() {
     const input = document.getElementById('ticker-input');
