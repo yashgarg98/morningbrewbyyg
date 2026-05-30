@@ -315,21 +315,22 @@
     btn.classList.add('active');
   }
 
-  // ── RSS → JSON via rss2json ──
-  const API = 'https://api.rss2json.com/v1/api.json?rss_url=';
+  // ── Fetch RSS via CORS proxy + native XML parser (no item cap) ──
+  const PROXY = 'https://api.allorigins.win/get?url=';
 
   const WORLD_FEEDS = [
     'https://feeds.bbci.co.uk/news/world/rss.xml',
-    'https://feeds.reuters.com/reuters/topNews',
     'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
     'https://feeds.skynews.com/feeds/rss/world.xml',
     'https://www.aljazeera.com/xml/rss/all.xml',
+    'https://rss.dw.com/rdf/rss-en-world',
   ];
 
   const INDIA_FEEDS = [
     'https://feeds.feedburner.com/ndtvnews-india-news',
     'https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms',
     'https://www.thehindu.com/news/national/feeder/default.rss',
+    'https://indianexpress.com/feed/',
   ];
 
   function timeAgo(dateStr) {
@@ -346,35 +347,36 @@
     return html.replace(/<[^>]*>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').trim();
   }
 
+  function xmlText(el, tag) {
+    return el.querySelector(tag)?.textContent?.trim() || '';
+  }
+
   function renderCards(items, containerId, countId) {
     const container = document.getElementById(containerId);
     const countEl = document.getElementById(countId);
     if (!items || items.length === 0) {
-      container.innerHTML = '<div class="error-msg">No articles found. Try refreshing.</div>';
+      container.innerHTML = '<p style="color:#888;font-family:sans-serif;padding:20px">No articles found. Try refreshing.</p>';
       return;
     }
     countEl.textContent = `${items.length} articles`;
-    container.innerHTML = '';
     const grid = document.createElement('div');
     grid.className = 'news-grid';
     items.forEach((item, i) => {
-      const desc = stripHtml(item.description || item.content || '');
-      const source = item.feed_source || (item.link ? new URL(item.link).hostname.replace('www.','') : '');
+      const desc = stripHtml(item.description);
       const card = document.createElement('div');
       card.className = 'news-card';
       card.onclick = () => window.open(item.link, '_blank');
       card.innerHTML = `
         <div class="card-number">#${i+1}</div>
         <div class="card-body">
-          <div class="card-source">${source}</div>
+          <div class="card-source">${item.source}</div>
           <div class="card-title">${item.title || 'Untitled'}</div>
           ${desc ? `<div class="card-desc">${desc}</div>` : ''}
           <div class="card-footer">
             <span class="card-time">${timeAgo(item.pubDate)}</span>
             <a class="card-link" href="${item.link}" target="_blank" onclick="event.stopPropagation()">Read →</a>
           </div>
-        </div>
-      `;
+        </div>`;
       grid.appendChild(card);
     });
     container.innerHTML = '';
@@ -383,46 +385,44 @@
 
   async function fetchFeed(url) {
     try {
-      const res = await fetch(API + encodeURIComponent(url));
+      const res = await fetch(PROXY + encodeURIComponent(url), { cache: 'no-store' });
       const json = await res.json();
-      if (json.status === 'ok' && json.items) {
-        const host = new URL(url).hostname.replace('www.','');
-        return json.items.map(it => ({ ...it, feed_source: host }));
-      }
-    } catch(e) {}
-    return [];
+      if (!json.contents) return [];
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(json.contents, 'text/xml');
+      const source = new URL(url).hostname.replace('www.', '');
+      return Array.from(xml.querySelectorAll('item')).map(item => ({
+        title:       xmlText(item, 'title'),
+        link:        xmlText(item, 'link') || xmlText(item, 'guid'),
+        description: xmlText(item, 'description'),
+        pubDate:     xmlText(item, 'pubDate'),
+        source,
+      })).filter(it => it.title && it.link);
+    } catch(e) { return []; }
   }
 
-  async function loadWorld(force = false) {
+  function dedupe(items, limit) {
+    const seen = new Set();
+    return items
+      .filter(it => { const k = it.title.slice(0,60); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0))
+      .slice(0, limit);
+  }
+
+  async function loadWorld() {
     const c = document.getElementById('world-container');
     c.innerHTML = '<div class="loading"><div class="spinner"></div>Fetching world news…</div>';
     const results = await Promise.all(WORLD_FEEDS.map(fetchFeed));
-    const merged = results.flat();
-    // deduplicate by title, sort by date, take top 20
-    const seen = new Set();
-    const unique = merged.filter(it => {
-      const k = (it.title||'').slice(0,60);
-      if (seen.has(k)) return false;
-      seen.add(k); return true;
-    }).sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0)).slice(0, 20);
-    renderCards(unique, 'world-container', 'world-count');
+    renderCards(dedupe(results.flat(), 20), 'world-container', 'world-count');
   }
 
-  async function loadIndia(force = false) {
+  async function loadIndia() {
     const c = document.getElementById('india-container');
     c.innerHTML = '<div class="loading"><div class="spinner"></div>Fetching India news…</div>';
     const results = await Promise.all(INDIA_FEEDS.map(fetchFeed));
-    const merged = results.flat();
-    const seen = new Set();
-    const unique = merged.filter(it => {
-      const k = (it.title||'').slice(0,60);
-      if (seen.has(k)) return false;
-      seen.add(k); return true;
-    }).sort((a,b) => new Date(b.pubDate||0) - new Date(a.pubDate||0)).slice(0, 20);
-    renderCards(unique, 'india-container', 'india-count');
+    renderCards(dedupe(results.flat(), 20), 'india-container', 'india-count');
   }
 
-  // Initial load
   loadWorld();
   loadIndia();
 </script>
